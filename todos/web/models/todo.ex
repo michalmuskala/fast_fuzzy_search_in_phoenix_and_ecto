@@ -23,15 +23,16 @@ defmodule Todos.Todo do
     |> cast(params, @required_fields, @optional_fields)
   end
 
-  def fuzzy_name_search(query_string) do
-    query = """
-SELECT *
-FROM todos
-WHERE levenshtein(name, $1) < 5
-ORDER BY levenshtein(name, $1)
-LIMIT 10;
-"""
-    query
-    |> Repo.execute_and_load([query_string], Todo)
+  defmacrop levenshtein(lhs, rhs) do
+    quote do
+      fragment("levenshtein(?, ?)", unquote(lhs), unquote(rhs))
+    end
+  end
+
+  def fuzzy_name_search(query \\ Todo, query_string) do
+    from q in query,
+      where: levenshtein(q.name, ^query_string) < 5,
+      order_by: levenshtein(q.name, ^query_string),
+      limit: 10
   end
 end
